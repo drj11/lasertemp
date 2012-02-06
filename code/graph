@@ -1,0 +1,91 @@
+#!/bin/sh
+# graph
+# Draw graph
+
+usage="graph cmd ...
+where *cmd* is one of:
+download
+split
+"
+
+# URL of the file containing temperatures.
+Turl="http://data.giss.nasa.gov/gistemp/tabledata_v3/GLB.Ts+dSST.txt"
+
+download () {
+    curl "$Turl" > data.txt
+}
+
+split () {
+  (
+    # The last complete year
+    last="$(grep -E '^[0-9]{4}( *-?[0-9]+){12}' data.txt |
+              cut -c 1-4 | tail -1)"
+    for m in 1 2 3 4 5 6 7 8 9 10 11 12
+    do
+        p=$((5*$m+1))
+        q=$(($p+4))
+        awk '/^[0-9]/ && +$1 && $1 < '"$last"' {print $0, NR}' data.txt |
+          cut "-c1-5,${p}-${q}" > "m${m}.txt"
+    done
+  )
+}
+
+svg () {
+  (
+    for m in 1 2 3 4 5 6 7 8 9 10 11 12
+    do
+        svgone "$m"
+    done
+  )
+}
+
+svgone () {
+  # $1 is the month number
+  (
+    # Unit in SVG file is one tenth of a millimetre.
+    # Number of units offset for y=0 point.
+    offset=500
+    m="$1"
+    f="m${m}.txt"
+    path=$(
+        echo M0 0
+        while read row
+        do
+            set -- $row
+            y=$(($offset + $2*5))
+            x=$(( ($1-1880)*20 ))
+            echo "L$x $y l20 0"
+        done < "$f"
+        echo V0 Z
+        )
+    path=$(echo $path)
+    cat <<! > "s${m}.svg"
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  >
+<defs>
+  <style type="text/css">
+    .debug { display: none }
+    .hidden { display: none }
+    g.axes *{ stroke: blue; stroke-width: 1.0; fill: none }
+    g.axes *.minor { stroke: blue; stroke-width: 0.35; fill: none }
+    g.axes text { stroke: none; fill: black; font-family: Verdana }
+    g.data * { stroke: none; fill: black }
+    path { stroke: red; stroke-width: 1.2; fill: none }
+    text { fill: black; font-family: Verdana }
+  </style>
+</defs>
+
+
+<g transform="scale(0.4)">
+<path d="$path" />
+</g>
+</svg>
+!
+  )
+}
+
+for a
+do
+    $a
+done
