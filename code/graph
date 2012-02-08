@@ -44,20 +44,45 @@ svgone () {
   (
     # Unit in SVG file is one tenth of a millimetre.
     # Number of units offset for y=0 point.
+    # Values of input y go from about -90 to about +90
+    # Normal is increasing temps up the page; if flipped then increasing
+    # temps are down the page.
+    # If the first year is >= 2000 then the x-axis will be flipped and
+    # older years will be to the right.
+    flipped="no"
     offset=500
+    # Number of vertical units for one unit temperature.
+    yscale=-5
+    # Horizontal size of one year
+    hstep=20
+    base=1000
+    if [ "$flipped" = "yes" ] ; then
+        yscale=$((-$yscale))
+        base=0
+    fi
     m="$1"
     f="m${m}.txt"
     path=$(
-        echo M0 0
+        echo M0 "$base"
         while read row
         do
             set -- $row
-            y=$(($offset + $2*5))
-            x=$(( ($1-1880)*20 ))
-            echo "L$x $y l20 0"
+            if [ -z "$hscale" ] && [ "$1" -ge 2000 ] ; then
+                hscale=-"$hstep"
+                fy="$1"
+            else
+                hscale="$hstep"
+                fy="$1"
+            fi
+            y=$(($offset + $2*$yscale))
+            x=$(( ($1-$fy)*$hscale ))
+            echo "V${y}h${hstep}"
         done < "$f"
-        echo V0 Z
+        echo V"$base" Z
         )
+    range=$(sort -n "$f" | sed -n '1s/ .*//p;$s/ .*//p')
+    range=$(echo $range | sed 's/ / to /')
+    text="$range  $(Month $m)"
     path=$(echo $path)
     cat <<! > "s${m}.svg"
 <svg
@@ -65,12 +90,6 @@ svgone () {
   >
 <defs>
   <style type="text/css">
-    .debug { display: none }
-    .hidden { display: none }
-    g.axes *{ stroke: blue; stroke-width: 1.0; fill: none }
-    g.axes *.minor { stroke: blue; stroke-width: 0.35; fill: none }
-    g.axes text { stroke: none; fill: black; font-family: Verdana }
-    g.data * { stroke: none; fill: black }
     path { stroke: red; stroke-width: 1.2; fill: none }
     text { fill: black; font-family: Verdana }
   </style>
@@ -79,10 +98,16 @@ svgone () {
 
 <g transform="scale(0.4)">
 <path d="$path" />
+<text x="1200" y="900" font-size="48">$text</text>
 </g>
 </svg>
 !
   )
+}
+
+Month () {
+    # Convert numeric month, 1 to 12, into full name.
+    date -d "$1/20" +%B
 }
 
 for a
