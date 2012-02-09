@@ -25,7 +25,7 @@ split () {
     do
         p=$((5*$m+1))
         q=$(($p+4))
-        awk '/^[0-9]/ && +$1 && $1 < '"$last"' {print $0, NR}' data.txt |
+        awk '/^[0-9]/ && +$1 && $1 <= '"$last"' {print $0, NR}' data.txt |
           cut "-c1-5,${p}-${q}" > "m${m}.txt"
     done
   )
