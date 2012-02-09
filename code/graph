@@ -1,11 +1,12 @@
 #!/bin/sh
 # graph
-# Draw graph
+# graphing command processor.
 
 usage="graph cmd ...
 where *cmd* is one of:
 download
 split
+svg
 "
 
 # URL of the file containing temperatures.
@@ -50,10 +51,11 @@ svgone () {
     # If the first year is >= 2000 then the x-axis will be flipped and
     # older years will be to the right.
     flipped="no"
+    labelled="yes"
     offset=500
     # Number of vertical units for one unit temperature.
     yscale=-5
-    # Horizontal size of one year
+    # Horizontal size of one year.
     hstep=20
     base=1000
     if [ "$flipped" = "yes" ] ; then
@@ -62,28 +64,50 @@ svgone () {
     fi
     m="$1"
     f="m${m}.txt"
+
+    # The first year in the file, will be on left-hand edge, not
+    # necessarily earliest year.
+    firstyear=$(awk '{print $1;exit}' "$f")
+    if [ "$firstyear" -ge 2000 ] ; then
+        hscale=-"$hstep"
+    else
+        hscale="$hstep"
+    fi
+    range=$(sort -n "$f" | sed -n '1s/ .*//p;$s/ .*//p')
+    minyear=$(set -- $range; echo $1)
+    maxyear=$(set -- $range; echo $2)
+    range=$(echo $range | sed 's/ / to /')
+
     path=$(
         echo M0 "$base"
         while read row
         do
             set -- $row
-            if [ -z "$hscale" ] && [ "$1" -ge 2000 ] ; then
-                hscale=-"$hstep"
-                fy="$1"
-            else
-                hscale="$hstep"
-                fy="$1"
-            fi
             y=$(($offset + $2*$yscale))
-            x=$(( ($1-$fy)*$hscale ))
+            x=$(( ($1-$firstyear)*$hscale ))
             echo "V${y}h${hstep}"
         done < "$f"
         echo V"$base" Z
         )
-    range=$(sort -n "$f" | sed -n '1s/ .*//p;$s/ .*//p')
-    range=$(echo $range | sed 's/ / to /')
-    text="$range  $(Month $m)"
     path=$(echo $path)
+
+    labels=""
+    if [ "$labelled" = "yes" ] ; then
+        firstdecade=$(( ($minyear+9)/10*10 ))
+        lastdecade=$(( $maxyear/10*10 ))
+        d=$firstdecade
+        while
+            x=$(( ($d-$firstyear)*$hscale + $hstep ))
+            y=$(( $base - 10 ))
+            label="$label
+<g transform='translate($x $y) rotate(-90)'>
+  <text>$d</text></g>"
+            [ $d -lt $lastdecade ]
+        do
+            d=$(( $d+10 ))
+        done
+    fi
+    text="$range  $(Month $m)"
     cat <<! > "s${m}.svg"
 <svg
   xmlns="http://www.w3.org/2000/svg"
@@ -91,15 +115,16 @@ svgone () {
 <defs>
   <style type="text/css">
     path { stroke: red; stroke-width: 1.2; fill: none }
-    text { fill: black; font-family: Verdana }
+    text { fill: black; font-family: Ubuntu Light }
   </style>
 </defs>
 
 
 <g transform="scale(0.4)">
 <path d="$path" />
-<text x="1200" y="900" font-size="48">$text</text>
+$label
 </g>
+<text x="120mm" y="90mm" font-size="6mm">$text</text>
 </svg>
 !
   )

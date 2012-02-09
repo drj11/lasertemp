@@ -6,3 +6,9 @@ cutting with a laser cutter.
 Specifically, the laser cutter at DoES Liverpool.
 
 https://github.com/drj11/lasertemp
+
+To get started, clone the repo then:
+
+./code/graph download split svg
+
+That produces 12 SVG files called s1.svg, s2.svg, etc.
