@@ -23,10 +23,15 @@ split () {
               cut -c 1-4 | tail -1)"
     for m in 1 2 3 4 5 6 7 8 9 10 11 12
     do
+        if [ "$m" -gt 6 ] ; then
+            sort="sort -nr"
+        else
+            sort="sort -n"
+        fi
         p=$((5*$m+1))
         q=$(($p+4))
         awk '/^[0-9]/ && +$1 && $1 <= '"$last"' {print $0, NR}' data.txt |
-          cut "-c1-5,${p}-${q}" > "m${m}.txt"
+          cut "-c1-5,${p}-${q}" | $sort > "m${m}.txt"
     done
   )
 }
@@ -107,6 +112,9 @@ svgone () {
             d=$(( $d+10 ))
         done
     fi
+    title=$(set -- $(head -1 data.txt); echo $1)
+    title=$(Capitalize "$title")
+    title="$title Temperature Anomaly"
     text="$range  $(Month $m)"
     cat <<! > "s${m}.svg"
 <svg
@@ -124,6 +132,7 @@ svgone () {
 <path d="$path" />
 $label
 </g>
+<text x="120mm" y="82mm" font-size="6mm">$title</text>
 <text x="120mm" y="90mm" font-size="6mm">$text</text>
 </svg>
 !
@@ -133,6 +142,11 @@ $label
 Month () {
     # Convert numeric month, 1 to 12, into full name.
     date -d "$1/20" +%B
+}
+
+Capitalize () {
+    # Make first letter upper case, rest lower case.
+    echo "$@" | sed 's/^\(.\)\(.*\)/\U\1\L\2/'
 }
 
 for a
