@@ -23,11 +23,7 @@ split () {
               cut -c 1-4 | tail -1)"
     for m in 1 2 3 4 5 6 7 8 9 10 11 12
     do
-        if [ "$m" -gt 6 ] ; then
-            sort="sort -nr"
-        else
-            sort="sort -n"
-        fi
+        sort="sort -n"
         p=$((5*$m+1))
         q=$(($p+4))
         awk '/^[0-9]/ && +$1 && $1 <= '"$last"' {print $0, NR}' data.txt |
@@ -100,13 +96,22 @@ svgone () {
     if [ "$labelled" = "yes" ] ; then
         firstdecade=$(( ($minyear+9)/10*10 ))
         lastdecade=$(( $maxyear/10*10 ))
-        d=$firstdecade
+        if [ "$firstdecade" -eq 1880 ]
+        then
+            d=1890
+        else
+            d=$firstdecade
+        fi
         while
             x=$(( ($d-$firstyear)*$hscale + $hstep ))
-            y=$(( $base - 10 ))
+            y=$(( $base ))
             label="$label
-<g transform='translate($x $y) rotate(-90)'>
-  <text>$d</text></g>"
+<g transform='translate($x $y) rotate(90)'>
+  <path class='etch' d='M0 0 L-125 0' />
+  <text text-anchor='end'
+        y='28'
+        x='-20'
+        alignment-baseline='middle' font-size='12mm'>$d</text></g>"
             [ $d -lt $lastdecade ]
         do
             d=$(( $d+10 ))
@@ -115,7 +120,7 @@ svgone () {
     title=$(set -- $(head -1 data.txt); echo $1)
     title=$(Capitalize "$title")
     title="$title Temperature Anomaly"
-    text="$range  $(Month $m)"
+    text="$(Month $m)"
     cat <<! > "s${m}.svg"
 <svg
   xmlns="http://www.w3.org/2000/svg"
@@ -123,17 +128,18 @@ svgone () {
 <defs>
   <style type="text/css">
     path { stroke: red; stroke-width: 1.2; fill: none }
+    path.etch { stroke: black; stroke-width: 1.2: fill: none }
     text { fill: black; font-family: Ubuntu Light }
   </style>
 </defs>
 
 
-<g transform="scale(0.4)">
+<g transform="scale(0.34)">
 <path d="$path" />
 $label
 </g>
-<text x="120mm" y="82mm" font-size="6mm">$title</text>
-<text x="120mm" y="90mm" font-size="6mm">$text</text>
+<text text-anchor='end' x="876" y="69mm" font-size="5mm">$title</text>
+<text text-anchor='end' x="876" y="74mm" font-size="5mm">$text</text>
 </svg>
 !
   )
